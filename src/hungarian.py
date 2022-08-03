@@ -18,83 +18,84 @@ def reduce_cost_matrix(cost_matrix: np.ndarray):
         cost_matrix[:, ci] -= minimum_cost
 
 
-def generate_assignments(cost_matrix: np.ndarray) -> list[tuple[int, int]]:
-    reduce_cost_matrix(cost_matrix)
-    print(f"Reduced cost matrix:\n{cost_matrix}\n")
+def mark_cost_matrix(cost_matrix: np.ndarray) -> tuple[list, list, list]:
+    bool_matrix_1: np.ndarray = cost_matrix == 0
+    bool_matrix_2: np.ndarray = cost_matrix == 0
 
-    while True:
-        boolean_matrix = cost_matrix == 0
+    marked_elements = []
+    marked_element_rows = []
 
-        # Mark elements on rows with minimum amount of zeroes
-        marked_element_rows = []
-        marked_elements = []
-        while True:
-            min_zero_count = boolean_matrix.shape[1]
-            min_zero_ri = -1
-            for ri in range(boolean_matrix.shape[0]):
-                zero_count = 0
-                for cost in boolean_matrix[ri, :]:
-                    if cost == True:
-                        zero_count += 1
-                if zero_count != 0 and zero_count < min_zero_count:
-                    min_zero_count = zero_count
-                    min_zero_ri = ri
-
-            # There are no more zeroes
-            if min_zero_ri == -1:
-                break
-
-            # Mark zeroed element on row
-            min_zero_ci = np.where(boolean_matrix[min_zero_ri, :] == True)[0][0]  # Get first column that has a zero
-            boolean_matrix[min_zero_ri, :] = False  # Remove zeroes from row
-            boolean_matrix[:, min_zero_ci] = False  # Remove zeroes from column
+    # Mark elements
+    is_marking_elements = True
+    while is_marking_elements:
+        min_zero_ri = -1
+        min_zero_count = bool_matrix_1.shape[1]
+        for ri, row in enumerate(bool_matrix_1):
+            zero_count = np.count_nonzero(row)
+            if zero_count != 0 and zero_count < min_zero_count:
+                min_zero_ri = ri
+                min_zero_count = zero_count
+        
+        if min_zero_ri != -1:
+            min_zero_ci = np.where(bool_matrix_1[min_zero_ri, :])[0][0]
+            bool_matrix_1[min_zero_ri, :] = False
+            bool_matrix_1[:, min_zero_ci] = False
             marked_elements.append((min_zero_ri, min_zero_ci))
             marked_element_rows.append(min_zero_ri)
-        
-        # Mark rows and columns that has marked elements minimally
-        boolean_matrix = cost_matrix == 0
-        marked_cols = []
-        non_marked_rows = list(set(range(boolean_matrix.shape[0])) - set(marked_element_rows))
+        else:
+            is_marking_elements = False
+    
+    # Mark rows and columns
+    non_marked_rows = list(set(range(bool_matrix_2.shape[0])) - set(marked_element_rows))
+    marked_cols = []
 
-        while True:
-            will_break = True
+    is_marking_rows_cols = True
+    while is_marking_rows_cols:
+        is_marking_rows_cols = False
 
-            for ri in non_marked_rows:
-                for ci, cost in enumerate(boolean_matrix[ri, :]):
-                    if cost and ci not in marked_cols:
-                        marked_cols.append(ci)
-                        will_break = False
-            
-            for ri, ci in marked_elements:
-                if ri not in non_marked_rows and ci in marked_cols:
-                    non_marked_rows.append(ri)
-                    will_break = False
-
-            if will_break:
-                break
-
-        marked_rows = list(set(range(boolean_matrix.shape[0])) - set(non_marked_rows))
-
-        # Return marked elements if all rows can be assigned to a column OR vice versa
-        if len(marked_rows) + len(marked_cols) == cost_matrix.shape[0] or \
-                len(marked_rows) + len(marked_cols) == cost_matrix.shape[1]:
-            return marked_elements
-
-        # Adjust cost matrix
-        non_zero_elements = []
-        non_zero_costs = []
         for ri in non_marked_rows:
-            for ci, cost in enumerate(cost_matrix[ri, :]):
-                if ci not in marked_cols:
-                    non_zero_costs.append(cost)
-                    non_zero_elements.append((ri, ci))
-        minimum_cost = min(non_zero_costs)
+            for ci, cost in enumerate(bool_matrix_2[ri, :]):
+                if cost and ci not in marked_cols:
+                    marked_cols.append(ci)
+                    is_marking_rows_cols = True
 
-        for ri, ci in non_zero_elements:
-            cost_matrix[ri, ci] -= minimum_cost
+        for ri, ci in marked_elements:
+            if ri not in non_marked_rows and ci in marked_cols:
+                non_marked_rows.append(ri)
+                is_marking_rows_cols = True
 
-        for ri in marked_rows:
-            for ci in marked_cols:
-                cost_matrix[ri, ci] += minimum_cost
+    marked_rows = list(set(range(bool_matrix_2.shape[0])) - set(non_marked_rows))
+    return marked_elements, marked_rows, marked_cols
 
-        print(f"Adjusted cost matrix:\n{cost_matrix}\n")
+
+def adjust_cost_matrix(cost_matrix: np.ndarray, marked_rows: list[int], marked_cols: list[int]):
+    non_marked_rows = list(set(range(cost_matrix.shape[0])) - set(marked_rows))
+
+    non_zero_costs = []
+    non_zero_elements = []
+    for ri in non_marked_rows:
+        for ci, cost in enumerate(cost_matrix[ri, :]):
+            if ci not in marked_cols:
+                non_zero_costs.append(cost)
+                non_zero_elements.append((ri, ci))
+    minimum_cost = min(non_zero_costs)
+
+    for ri, ci in non_zero_elements:
+        cost_matrix[ri, ci] -= minimum_cost
+
+    for ri in marked_rows:
+        for ci in marked_cols:
+            cost_matrix[ri, ci] += minimum_cost
+
+
+def generate_assignments(cost_matrix: np.ndarray) -> list[tuple[int, int]]:
+    reduce_cost_matrix(cost_matrix)
+
+    while True:
+        marked_elements, marked_rows, marked_cols = mark_cost_matrix(cost_matrix)
+
+        if len(marked_rows) + len(marked_cols) < cost_matrix.shape[0] and len(marked_rows) + len(marked_cols) < cost_matrix.shape[1]:
+            adjust_cost_matrix(cost_matrix, marked_rows, marked_cols)
+        else:
+            return marked_elements
+        
