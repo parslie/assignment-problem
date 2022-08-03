@@ -3,7 +3,8 @@ import numpy as np
 import random
 import time
 
-from hungarian import generate_assignments
+from hungarian import hungarian_algorithm
+from jonker import jonker_volgenant_algorithm
 
 
 def generate_cost_matrix(row_count: int, col_count: int, max_cost: float = 10) -> np.ndarray:
@@ -25,7 +26,9 @@ def time_assignments(function: Callable, row_count: int, col_count: int, iterati
 
 if __name__ == "__main__":
     for n in range(1, 8):
-        time_assignments(generate_assignments, n, n)
+        time_assignments(hungarian_algorithm, n, n)
+    for n in range(1, 8):
+        time_assignments(jonker_volgenant_algorithm, n, n)
 
     #cost_matrix = generate_cost_matrix(3, 3)
     #print(f"Cost matrix:\n{cost_matrix}\n")

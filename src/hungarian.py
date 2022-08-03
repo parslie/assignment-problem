@@ -88,7 +88,7 @@ def adjust_cost_matrix(cost_matrix: np.ndarray, marked_rows: list[int], marked_c
             cost_matrix[ri, ci] += minimum_cost
 
 
-def generate_assignments(cost_matrix: np.ndarray) -> list[tuple[int, int]]:
+def hungarian_algorithm(cost_matrix: np.ndarray) -> list[tuple[int, int]]:
     reduce_cost_matrix(cost_matrix)
 
     while True:
